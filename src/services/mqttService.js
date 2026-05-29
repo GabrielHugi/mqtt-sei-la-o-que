@@ -1,5 +1,5 @@
 import init from 'react_native_mqtt';
-import { AsyncStorage } from '@react-native-async-storage/async-storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Inicializa a biblioteca com suporte a armazenamento local
 init({
@@ -20,9 +20,27 @@ export default class MQTTService {
 
         this.client = new Paho.MQTT.Client(host, port, path, clientId);
 
-        this.client.onMessageArrived = (message) => {
-            onMessage(message.destinationName, message.payloadString);
-        };
+        this.client.onMessageArrived = async (message) => {
+          const topic = message.destinationName;
+          const payload = message.payloadString;
+
+          try {
+            // Save latest message per topic
+            await AsyncStorage.setItem(
+              `mqtt:${topic}`,
+              payload
+            );
+
+            const value = await AsyncStorage.getItem(`mqtt:${topic}`);
+            console.log(value);
+          } catch (err) {
+            console.error('Failed to save MQTT message:', err);
+          }
+
+          if (onMessage) {
+            onMessage(topic, payload);
+          }
+        }
 
         const options = {
             userName: user,
